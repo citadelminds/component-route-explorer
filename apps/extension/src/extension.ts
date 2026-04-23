@@ -61,10 +61,14 @@ export function activate(context: vscode.ExtensionContext) {
         const deduped = dedupeMatches(matches);
 
         if (debugEnabled) {
-          const seedPreview = [...initialFiles].slice(0, 10).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n");
+          const seedPreview = [...initialFiles].slice(0, 10).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n") || "<none>";
+          const transitivePreview = transitiveFiles.slice(0, 20).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n") || "<none>";
           const routePreview = deduped.map((match) => `${match.routePath} <= ${path.relative(workspaceFolder.uri.fsPath, match.sourceFile)}`).join("\n") || "<none>";
           void vscode.window.showInformationMessage(`Seeds:
 ${seedPreview}
+
+Transitive Files:
+${transitivePreview}
 
 Routes:
 ${routePreview}`);
