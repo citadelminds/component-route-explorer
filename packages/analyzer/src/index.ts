@@ -4,6 +4,7 @@ import type { ImportGraph } from "../../sdk/src/index.js";
 
 export function buildImportGraph(workspaceFiles: string[], workspaceRoot: string): ImportGraph {
   const reverseImports = new Map<string, Set<string>>();
+  const debugResolvedEdges: Array<{ from: string; to: string; specifier: string }> = [];
   const fileSet = new Set(workspaceFiles.map(normalize));
   const aliasRoots = getAliasRoots(workspaceRoot);
 
@@ -13,13 +14,14 @@ export function buildImportGraph(workspaceFiles: string[], workspaceRoot: string
     for (const specifier of extractImportSpecifiers(text)) {
       const resolved = resolveImportSpecifier(importer, specifier, fileSet, workspaceRoot, aliasRoots);
       if (!resolved) continue;
+      debugResolvedEdges.push({ from: importer, to: resolved, specifier });
       const importers = reverseImports.get(resolved) ?? new Set<string>();
       importers.add(importer);
       reverseImports.set(resolved, importers);
     }
   }
 
-  return { reverseImports };
+  return { reverseImports, debugResolvedEdges };
 }
 
 export function expandTransitively(startFiles: string[], graph: ImportGraph): string[] {

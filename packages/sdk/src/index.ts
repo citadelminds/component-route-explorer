@@ -28,4 +28,5 @@ export interface RouteAdapter {
 
 export type ImportGraph = {
   reverseImports: Map<string, Set<string>>;
+  debugResolvedEdges?: Array<{ from: string; to: string; specifier: string }>;
 };
