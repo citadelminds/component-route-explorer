@@ -2,17 +2,15 @@
   "name": "component-route-explorer",
   "displayName": "Component Route Explorer",
   "description": "Find which app routes use the selected component, then open them in the browser.",
-  "version": "0.1.0",
-  "publisher": "citadel-minds",
+  "version": "0.1.2",
+  "publisher": "citadelminds",
   "license": "MIT",
   "private": false,
   "main": "./dist/extension.js",
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": [
-    "Other"
-  ],
+  "categories": ["Other"],
   "activationEvents": [
     "onCommand:componentRouteExplorer.showRoutesUsingComponent"
   ],
@@ -35,16 +33,10 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "rm -rf dist && mkdir -p dist && bun build src/extension.ts --target=node --format=cjs --external=vscode --outfile=dist/extension.js",
     "check": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
-    "package": "npx @vscode/vsce package --no-dependencies --out ../component-route-explorer-0.1.0.vsix"
-  },
-  "dependencies": {
-    "@component-route-explorer/adapter-next-app": "workspace:*",
-    "@component-route-explorer/adapter-react-router": "workspace:*",
-    "@component-route-explorer/analyzer": "workspace:*",
-    "@component-route-explorer/sdk": "workspace:*"
+    "package": "npx @vscode/vsce package --no-dependencies --out ../component-route-explorer-0.1.2.vsix"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
@@ -54,7 +46,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/citadel-minds/component-route-explorer.git"
+    "url": "https://github.com/citadelminds/component-route-explorer.git"
   },
   "files": [
     "dist",
