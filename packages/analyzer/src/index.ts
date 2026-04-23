@@ -68,13 +68,19 @@ function resolveImportSpecifier(importerFile: string, specifier: string, fileSet
 
   if (specifier.startsWith("@/")) {
     for (const aliasRoot of aliasRoots) {
-      const resolved = resolveFromBase(aliasRoot, `.${specifier.slice(1)}`, fileSet);
+      const resolved = resolveAliasSpecifier(aliasRoot, specifier, fileSet);
       if (resolved) return resolved;
     }
     return undefined;
   }
 
   return undefined;
+}
+
+
+function resolveAliasSpecifier(aliasRoot: string, specifier: string, fileSet: Set<string>): string | undefined {
+  const withoutPrefix = specifier.replace(/^@\//, "");
+  return resolveFromBase(aliasRoot, withoutPrefix, fileSet) ?? resolveFromBase(aliasRoot, `./${withoutPrefix}`, fileSet);
 }
 
 function resolveFromBase(baseDir: string, specifier: string, fileSet: Set<string>): string | undefined {
@@ -109,6 +115,7 @@ function getAliasRoots(workspaceRoot: string): string[] {
       for (const alias of aliases) {
         const cleaned = String(alias).replace(/\*+$/g, "").replace(/\/$/, "");
         roots.push(path.resolve(workspaceRoot, cleaned));
+        roots.push(path.resolve(workspaceRoot, cleaned.replace(/^\.\//, "")));
       }
     }
   } catch {}
