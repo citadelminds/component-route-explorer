@@ -5,12 +5,13 @@ import type { ImportGraph } from "../../sdk/src/index.js";
 export function buildImportGraph(workspaceFiles: string[], workspaceRoot: string): ImportGraph {
   const reverseImports = new Map<string, Set<string>>();
   const fileSet = new Set(workspaceFiles.map(normalize));
+  const aliasRoots = getAliasRoots(workspaceRoot);
 
   for (const file of workspaceFiles) {
     const importer = normalize(file);
     const text = readFileText(file);
     for (const specifier of extractImportSpecifiers(text)) {
-      const resolved = resolveImportSpecifier(importer, specifier, fileSet, workspaceRoot);
+      const resolved = resolveImportSpecifier(importer, specifier, fileSet, workspaceRoot, aliasRoots);
       if (!resolved) continue;
       const importers = reverseImports.get(resolved) ?? new Set<string>();
       importers.add(importer);
@@ -56,7 +57,7 @@ function extractImportSpecifiers(sourceText: string): string[] {
   return [...results];
 }
 
-function resolveImportSpecifier(importerFile: string, specifier: string, fileSet: Set<string>, workspaceRoot: string): string | undefined {
+function resolveImportSpecifier(importerFile: string, specifier: string, fileSet: Set<string>, workspaceRoot: string, aliasRoots: string[]): string | undefined {
   if (specifier.startsWith(".")) {
     return resolveFromBase(path.dirname(importerFile), specifier, fileSet);
   }
@@ -66,7 +67,11 @@ function resolveImportSpecifier(importerFile: string, specifier: string, fileSet
   }
 
   if (specifier.startsWith("@/")) {
-    return resolveFromBase(workspaceRoot, `.${specifier.slice(1)}`, fileSet);
+    for (const aliasRoot of aliasRoots) {
+      const resolved = resolveFromBase(aliasRoot, `.${specifier.slice(1)}`, fileSet);
+      if (resolved) return resolved;
+    }
+    return undefined;
   }
 
   return undefined;
@@ -87,6 +92,28 @@ function resolveFromBase(baseDir: string, specifier: string, fileSet: Set<string
   ];
 
   return candidates.find((candidate) => fileSet.has(candidate));
+}
+
+
+function getAliasRoots(workspaceRoot: string): string[] {
+  const roots = [workspaceRoot, path.join(workspaceRoot, "src")];
+
+  try {
+    const tsconfigPath = path.join(workspaceRoot, "tsconfig.json");
+    const raw = fs.readFileSync(tsconfigPath, "utf8");
+    const parsed = JSON.parse(raw);
+    const paths = parsed?.compilerOptions?.paths;
+    const aliases = paths?.["@/*"];
+
+    if (Array.isArray(aliases)) {
+      for (const alias of aliases) {
+        const cleaned = String(alias).replace(/\*+$/g, "").replace(/\/$/, "");
+        roots.push(path.resolve(workspaceRoot, cleaned));
+      }
+    }
+  } catch {}
+
+  return [...new Set(roots.map(normalize))];
 }
 
 function readFileText(filePath: string): string {
