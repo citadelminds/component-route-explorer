@@ -16,6 +16,7 @@ export type ReferencePoint = {
 export type RouteResolverContext = {
   workspaceRoot: string;
   reference: ReferencePoint;
+  workspaceFiles: string[];
 };
 
 export interface RouteAdapter {

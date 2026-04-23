@@ -17,10 +17,12 @@ export async function analyzeRoutesForSymbol(options: AnalyzeRoutesOptions): Pro
   const node = findNodeAtPosition(sourceFile, options.position);
   if (!node) return [];
 
-  const symbol = program.getTypeChecker().getSymbolAtLocation(node);
+  const checker = program.getTypeChecker();
+  const initialSymbol = checker.getSymbolAtLocation(node);
+  const symbol = resolveAliasedSymbol(checker, initialSymbol);
   if (!symbol) return [];
 
-  const references = collectReferences(program, symbol);
+  const references = collectReferences(program, checker, symbol);
   const matches: RouteMatch[] = [];
 
   for (const adapter of options.adapters.filter((candidate) => candidate.canHandle(options.workspaceFiles))) {
@@ -28,6 +30,7 @@ export async function analyzeRoutesForSymbol(options: AnalyzeRoutesOptions): Pro
       const resolved = await adapter.resolveRoutes({
         workspaceRoot: options.workspaceRoot,
         reference,
+        workspaceFiles: options.workspaceFiles,
       });
       matches.push(...resolved);
     }
@@ -43,6 +46,7 @@ function createProgram(fileNames: string[]): ts.Program {
     jsx: ts.JsxEmit.Preserve,
     target: ts.ScriptTarget.ES2022,
     module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
   });
 }
 
@@ -58,14 +62,13 @@ function findNodeAtPosition(sourceFile: ts.SourceFile, position: number): ts.Nod
   return found;
 }
 
-function collectReferences(program: ts.Program, symbol: ts.Symbol): ReferencePoint[] {
+function collectReferences(program: ts.Program, checker: ts.TypeChecker, symbol: ts.Symbol): ReferencePoint[] {
   const references: ReferencePoint[] = [];
-  const checker = program.getTypeChecker();
 
   for (const sourceFile of program.getSourceFiles()) {
     if (sourceFile.isDeclarationFile) continue;
     const visit = (node: ts.Node) => {
-      const nodeSymbol = checker.getSymbolAtLocation(node);
+      const nodeSymbol = resolveAliasedSymbol(checker, checker.getSymbolAtLocation(node));
       if (nodeSymbol && nodeSymbol === symbol) {
         const position = sourceFile.getLineAndCharacterOfPosition(node.getStart());
         references.push({
@@ -80,6 +83,11 @@ function collectReferences(program: ts.Program, symbol: ts.Symbol): ReferencePoi
   }
 
   return references;
+}
+
+function resolveAliasedSymbol(checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts.Symbol | undefined {
+  if (!symbol) return undefined;
+  return symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
 function dedupeMatches(matches: RouteMatch[]): RouteMatch[] {
