@@ -1,9 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as vscode from "vscode";
-import { analyzeRoutesForSymbol } from "../../../packages/analyzer/src/index.js";
 import { createNextAppAdapter } from "../../../packages/adapter-next-app/src/index.js";
 import { createReactRouterAdapter } from "../../../packages/adapter-react-router/src/index.js";
+import type { ReferencePoint, RouteMatch } from "../../../packages/sdk/src/index.js";
 
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
@@ -22,26 +22,44 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const workspaceFiles = await collectWorkspaceFiles(workspaceFolder.uri.fsPath);
-        const offset = editor.document.offsetAt(editor.selection.active);
-        const matches = await analyzeRoutesForSymbol({
-          workspaceRoot: workspaceFolder.uri.fsPath,
-          fileName: editor.document.uri.fsPath,
-          position: offset,
-          workspaceFiles,
-          adapters: [createNextAppAdapter(), createReactRouterAdapter()],
-        });
+        const references = await findReferences(editor.document.uri, editor.selection.active);
+        if (references.length === 0) {
+          vscode.window.showInformationMessage("No references found for the selected symbol.");
+          return;
+        }
 
-        if (matches.length === 0) {
+        const adapters = [createNextAppAdapter(), createReactRouterAdapter()].filter((adapter) => adapter.canHandle(workspaceFiles));
+        const matches: RouteMatch[] = [];
+
+        for (const reference of references) {
+          const referencePoint: ReferencePoint = {
+            filePath: reference.uri.fsPath,
+            line: reference.range.start.line + 1,
+            column: reference.range.start.character + 1,
+          };
+
+          for (const adapter of adapters) {
+            try {
+              const resolved = await adapter.resolveRoutes({
+                workspaceRoot: workspaceFolder.uri.fsPath,
+                reference: referencePoint,
+                workspaceFiles,
+              });
+              matches.push(...resolved);
+            } catch {
+              continue;
+            }
+          }
+        }
+
+        const deduped = dedupeMatches(matches);
+        if (deduped.length === 0) {
           vscode.window.showInformationMessage("No routes found for the selected component yet.");
           return;
         }
 
-        const selected = await vscode.window.showQuickPick<{
-          label: string;
-          description: string;
-          match: (typeof matches)[number];
-        }>(
-          matches.map((match) => ({
+        const selected = await vscode.window.showQuickPick(
+          deduped.map((match) => ({
             label: match.displayName,
             description: `${match.framework} • ${path.relative(workspaceFolder.uri.fsPath, match.sourceFile)}`,
             match,
@@ -67,6 +85,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
+async function findReferences(uri: vscode.Uri, position: vscode.Position): Promise<vscode.Location[]> {
+  const locations = (await vscode.commands.executeCommand<vscode.Location[]>(
+    "vscode.executeReferenceProvider",
+    uri,
+    position,
+  )) ?? [];
+  return locations.filter((location) => location.uri.scheme === "file");
+}
+
 async function collectWorkspaceFiles(root: string): Promise<string[]> {
   const results: string[] = [];
   const stack = [root];
@@ -88,6 +115,16 @@ async function collectWorkspaceFiles(root: string): Promise<string[]> {
   }
 
   return results;
+}
+
+function dedupeMatches(matches: RouteMatch[]): RouteMatch[] {
+  const seen = new Set<string>();
+  return matches.filter((match) => {
+    const key = `${match.framework}:${match.routePath}:${match.sourceFile}:${match.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function ensureTrailingSlash(value: string): string {
