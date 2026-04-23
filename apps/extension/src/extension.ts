@@ -62,6 +62,11 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (debugEnabled) {
           const seedPreview = [...initialFiles].slice(0, 10).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n") || "<none>";
+          const workspacePreview = workspaceFiles
+            .filter((file) => file.includes("graph-node") || file.includes("topics") || file.includes("graph-node-metadata-popover"))
+            .slice(0, 20)
+            .map((file) => path.relative(workspaceFolder.uri.fsPath, file))
+            .join("\n") || "<none>";
           const transitivePreview = transitiveFiles.slice(0, 20).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n") || "<none>";
           const edgePreview = (graph.debugResolvedEdges ?? [])
             .filter((edge) => edge.to === editor.document.uri.fsPath.replaceAll(path.sep, "/"))
@@ -69,7 +74,13 @@ export function activate(context: vscode.ExtensionContext) {
             .map((edge) => `${path.relative(workspaceFolder.uri.fsPath, edge.from)} -> ${path.relative(workspaceFolder.uri.fsPath, edge.to)} via ${edge.specifier}`)
             .join("\n") || "<none>";
           const routePreview = deduped.map((match) => `${match.routePath} <= ${path.relative(workspaceFolder.uri.fsPath, match.sourceFile)}`).join("\n") || "<none>";
-          void vscode.window.showInformationMessage(`Seeds:
+          void vscode.window.showInformationMessage(`Workspace Root:
+${workspaceFolder.uri.fsPath}
+
+Workspace Files Sample:
+${workspacePreview}
+
+Seeds:
 ${seedPreview}
 
 Importer Edges To Seed:
