@@ -40,21 +40,22 @@ export function expandTransitively(startFiles: string[], graph: ImportGraph): st
 }
 
 function extractImportSpecifiers(sourceText: string): string[] {
-  const results = new Set<string>();
-  const patterns = [
-    /import\s+(?:[^"']+from\s+)?["']([^"']+)["']/g,
-    /export\s+[^"']*from\s+["']([^"']+)["']/g,
-    /require\(\s*["']([^"']+)["']\s*\)/g,
-    /import\(\s*["']([^"']+)["']\s*\)/g,
-  ];
+  const specifiers = new Set<string>();
 
-  for (const pattern of patterns) {
+  const addMatches = (pattern: RegExp) => {
     for (const match of sourceText.matchAll(pattern)) {
-      results.add(match[1]);
+      const value = match[1];
+      if (value) specifiers.add(value);
     }
-  }
+  };
 
-  return [...results];
+  addMatches(/import\s+(?:type\s+)?(?:[\w*${}\s,]+\s+from\s+)?["'`]([^"'`]+)["'`]/g);
+  addMatches(/export\s+(?:type\s+)?(?:[\w*${}\s,]+\s+from\s+)?["'`]([^"'`]+)["'`]/g);
+  addMatches(/require\(\s*["'`]([^"'`]+)["'`]\s*\)/g);
+  addMatches(/import\(\s*["'`]([^"'`]+)["'`]\s*\)/g);
+  addMatches(/from:\s*["'`]([^"'`]+)["'`]/g);
+
+  return [...specifiers];
 }
 
 function resolveImportSpecifier(importerFile: string, specifier: string, fileSet: Set<string>, workspaceRoot: string, aliasRoots: string[]): string | undefined {
@@ -77,7 +78,6 @@ function resolveImportSpecifier(importerFile: string, specifier: string, fileSet
   return undefined;
 }
 
-
 function resolveAliasSpecifier(aliasRoot: string, specifier: string, fileSet: Set<string>): string | undefined {
   const withoutPrefix = specifier.replace(/^@\//, "");
   return resolveFromBase(aliasRoot, withoutPrefix, fileSet) ?? resolveFromBase(aliasRoot, `./${withoutPrefix}`, fileSet);
@@ -99,7 +99,6 @@ function resolveFromBase(baseDir: string, specifier: string, fileSet: Set<string
 
   return candidates.find((candidate) => fileSet.has(candidate));
 }
-
 
 function getAliasRoots(workspaceRoot: string): string[] {
   const roots = [workspaceRoot, path.join(workspaceRoot, "src")];
