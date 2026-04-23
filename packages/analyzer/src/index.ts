@@ -24,7 +24,7 @@ export function buildImportGraph(workspaceFiles: string[], workspaceRoot: string
   return { reverseImports, debugResolvedEdges };
 }
 
-export function expandTransitively(startFiles: string[], graph: ImportGraph): string[] {
+export function expandTransitively(startFiles: string[], graph: ImportGraph, workspaceFiles?: string[], workspaceRoot?: string): string[] {
   const queue = [...new Set(startFiles.map(normalize))];
   const visited = new Set<string>();
 
@@ -33,12 +33,36 @@ export function expandTransitively(startFiles: string[], graph: ImportGraph): st
     if (!current || visited.has(current)) continue;
     visited.add(current);
 
-    for (const importer of graph.reverseImports.get(current) ?? []) {
+    let importers = graph.reverseImports.get(current);
+    if ((!importers || importers.size === 0) && workspaceFiles && workspaceRoot) {
+      importers = findFallbackImporters(current, workspaceFiles, workspaceRoot);
+    }
+
+    for (const importer of importers ?? []) {
       if (!visited.has(importer)) queue.push(importer);
     }
   }
 
   return [...visited];
+}
+
+function findFallbackImporters(targetFile: string, workspaceFiles: string[], workspaceRoot: string): Set<string> {
+  const aliasRoots = getAliasRoots(workspaceRoot);
+  const fileSet = new Set(workspaceFiles.map(normalize));
+  const importers = new Set<string>();
+
+  for (const file of workspaceFiles) {
+    const importer = normalize(file);
+    const text = readFileText(file);
+    for (const specifier of extractImportSpecifiers(text)) {
+      const resolved = resolveImportSpecifier(importer, specifier, fileSet, workspaceRoot, aliasRoots);
+      if (resolved === targetFile) {
+        importers.add(importer);
+      }
+    }
+  }
+
+  return importers;
 }
 
 function extractImportSpecifiers(sourceText: string): string[] {

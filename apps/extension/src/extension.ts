@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
           ...references.map((reference) => reference.uri.fsPath),
         ]);
         const graph = buildImportGraph(workspaceFiles, workspaceFolder.uri.fsPath);
-        const transitiveFiles = expandTransitively([...initialFiles], graph);
+        const transitiveFiles = expandTransitively([...initialFiles], graph, workspaceFiles, workspaceFolder.uri.fsPath);
         const debugEnabled = vscode.workspace.getConfiguration("componentRouteExplorer").get<boolean>("debug", false);
 
         const adapters = [createNextAppAdapter(), createReactRouterAdapter()].filter((adapter) => adapter.canHandle(workspaceFiles));
