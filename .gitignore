@@ -1,8 +1,10 @@
 node_modules
-bun.lockb
-.dist
-.next
 dist
+.next
 *.tsbuildinfo
-.vscode-test
 *.vsix
+.vscode-test
+packages/*/src/*.js
+packages/*/src/*.js.map
+packages/*/src/*.d.ts
+packages/*/src/*.d.ts.map
