@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "lib": [
+      "ES2022"
+    ],
+    "types": [
+      "node",
+      "vscode"
+    ],
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "outDir": "dist"
+  },
+  "references": [
+    {
+      "path": "../../packages/sdk"
+    },
+    {
+      "path": "../../packages/analyzer"
+    },
+    {
+      "path": "../../packages/adapter-next-app"
+    },
+    {
+      "path": "../../packages/adapter-react-router"
+    }
+  ],
+  "include": [
+    "src/**/*"
+  ]
+}

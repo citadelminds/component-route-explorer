@@ -1,0 +1,85 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "component-route-explorer",
+      "devDependencies": {
+        "@types/node": "^22.15.3",
+        "typescript": "^5.8.3",
+      },
+    },
+    "apps/extension": {
+      "name": "component-route-explorer-extension",
+      "version": "0.1.0",
+      "dependencies": {
+        "@component-route-explorer/adapter-next-app": "workspace:*",
+        "@component-route-explorer/adapter-react-router": "workspace:*",
+        "@component-route-explorer/analyzer": "workspace:*",
+        "@component-route-explorer/sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.15.3",
+        "@types/vscode": "^1.95.0",
+        "typescript": "^5.8.3",
+      },
+    },
+    "packages/adapter-next-app": {
+      "name": "@component-route-explorer/adapter-next-app",
+      "version": "0.1.0",
+      "dependencies": {
+        "@component-route-explorer/sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.15.3",
+        "typescript": "^5.8.3",
+      },
+    },
+    "packages/adapter-react-router": {
+      "name": "@component-route-explorer/adapter-react-router",
+      "version": "0.1.0",
+      "dependencies": {
+        "@component-route-explorer/sdk": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^22.15.3",
+        "typescript": "^5.8.3",
+      },
+    },
+    "packages/analyzer": {
+      "name": "@component-route-explorer/analyzer",
+      "version": "0.1.0",
+      "dependencies": {
+        "@component-route-explorer/sdk": "workspace:*",
+        "typescript": "^5.8.3",
+      },
+    },
+    "packages/sdk": {
+      "name": "@component-route-explorer/sdk",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/node": "^22.15.3",
+        "typescript": "^5.8.3",
+      },
+    },
+  },
+  "packages": {
+    "@component-route-explorer/adapter-next-app": ["@component-route-explorer/adapter-next-app@workspace:packages/adapter-next-app"],
+
+    "@component-route-explorer/adapter-react-router": ["@component-route-explorer/adapter-react-router@workspace:packages/adapter-react-router"],
+
+    "@component-route-explorer/analyzer": ["@component-route-explorer/analyzer@workspace:packages/analyzer"],
+
+    "@component-route-explorer/sdk": ["@component-route-explorer/sdk@workspace:packages/sdk"],
+
+    "@types/node": ["@types/node@22.19.17", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-wGdMcf+vPYM6jikpS/qhg6WiqSV/OhG+jeeHT/KlVqxYfD40iYJf9/AE1uQxVWFvU7MipKRkRv8NSHiCGgPr8Q=="],
+
+    "@types/vscode": ["@types/vscode@1.116.0", "", {}, "sha512-sYHp4MO6BqJ2PD7Hjt0hlIS3tMaYsVPJrd0RUjDJ8HtOYnyJIEej0bLSccM8rE77WrC+Xox/kdBwEFDO8MsxNA=="],
+
+    "component-route-explorer-extension": ["component-route-explorer-extension@workspace:apps/extension"],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
+  }
+}

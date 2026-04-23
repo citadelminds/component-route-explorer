@@ -1,0 +1,48 @@
+{
+  "name": "component-route-explorer-extension",
+  "displayName": "Component Route Explorer",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:componentRouteExplorer.showRoutesUsingComponent"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "componentRouteExplorer.showRoutesUsingComponent",
+        "title": "Show Routes Using This Component"
+      }
+    ],
+    "configuration": {
+      "title": "Component Route Explorer",
+      "properties": {
+        "componentRouteExplorer.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "Base URL used when opening routes in the browser"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@component-route-explorer/adapter-next-app": "workspace:*",
+    "@component-route-explorer/adapter-react-router": "workspace:*",
+    "@component-route-explorer/analyzer": "workspace:*",
+    "@component-route-explorer/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.8.3"
+  }
+}

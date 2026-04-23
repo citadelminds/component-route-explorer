@@ -1,0 +1,17 @@
+{
+  "name": "@component-route-explorer/analyzer",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@component-route-explorer/sdk": "workspace:*",
+    "typescript": "^5.8.3"
+  }
+}

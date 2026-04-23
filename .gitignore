@@ -1,0 +1,8 @@
+node_modules
+bun.lockb
+.dist
+.next
+dist
+*.tsbuildinfo
+.vscode-test
+*.vsix

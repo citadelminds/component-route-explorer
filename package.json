@@ -1,0 +1,24 @@
+{
+  "name": "component-route-explorer",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "bun@1.2.15",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun run build:sdk && bun run build:adapter-next && bun run build:adapter-react-router && bun run build:analyzer && bun run build:extension",
+    "build:sdk": "cd packages/sdk && bun run build",
+    "build:adapter-next": "cd packages/adapter-next-app && bun run build",
+    "build:adapter-react-router": "cd packages/adapter-react-router && bun run build",
+    "build:analyzer": "cd packages/analyzer && bun run build",
+    "build:extension": "cd apps/extension && bun run build",
+    "check": "bun run build",
+    "lint": "bun run build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.8.3"
+  }
+}
