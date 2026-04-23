@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as vscode from "vscode";
+import { buildImportGraph, expandTransitively } from "../../../packages/analyzer/src/index.js";
 import { createNextAppAdapter } from "../../../packages/adapter-next-app/src/index.js";
 import { createReactRouterAdapter } from "../../../packages/adapter-react-router/src/index.js";
 import type { ReferencePoint, RouteMatch } from "../../../packages/sdk/src/index.js";
@@ -23,19 +24,18 @@ export function activate(context: vscode.ExtensionContext) {
 
         const workspaceFiles = await collectWorkspaceFiles(workspaceFolder.uri.fsPath);
         const references = await findReferences(editor.document.uri, editor.selection.active);
-        if (references.length === 0) {
-          vscode.window.showInformationMessage("No references found for the selected symbol.");
-          return;
-        }
+        const initialFiles = new Set<string>([editor.document.uri.fsPath, ...references.map((reference) => reference.uri.fsPath)]);
+        const graph = buildImportGraph(workspaceFiles, workspaceFolder.uri.fsPath);
+        const transitiveFiles = expandTransitively([...initialFiles], graph);
 
         const adapters = [createNextAppAdapter(), createReactRouterAdapter()].filter((adapter) => adapter.canHandle(workspaceFiles));
         const matches: RouteMatch[] = [];
 
-        for (const reference of references) {
+        for (const filePath of transitiveFiles) {
           const referencePoint: ReferencePoint = {
-            filePath: reference.uri.fsPath,
-            line: reference.range.start.line + 1,
-            column: reference.range.start.character + 1,
+            filePath,
+            line: 1,
+            column: 1,
           };
 
           for (const adapter of adapters) {

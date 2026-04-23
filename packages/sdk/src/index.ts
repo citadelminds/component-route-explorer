@@ -25,3 +25,7 @@ export interface RouteAdapter {
   canHandle(workspaceFiles: string[]): boolean;
   resolveRoutes(context: RouteResolverContext): Promise<RouteMatch[]>;
 }
+
+export type ImportGraph = {
+  reverseImports: Map<string, Set<string>>;
+};

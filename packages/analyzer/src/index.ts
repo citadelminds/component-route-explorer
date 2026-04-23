@@ -1,125 +1,101 @@
-import ts from "typescript";
-import type { ReferencePoint, RouteAdapter, RouteMatch } from "../../sdk/src/index.js";
+import fs from "node:fs";
+import path from "node:path";
+import type { ImportGraph } from "../../sdk/src/index.js";
 
-export type AnalyzeRoutesOptions = {
-  workspaceRoot: string;
-  fileName: string;
-  position: number;
-  workspaceFiles: string[];
-  adapters: RouteAdapter[];
-};
+export function buildImportGraph(workspaceFiles: string[], workspaceRoot: string): ImportGraph {
+  const reverseImports = new Map<string, Set<string>>();
+  const fileSet = new Set(workspaceFiles.map(normalize));
 
-export async function analyzeRoutesForSymbol(options: AnalyzeRoutesOptions): Promise<RouteMatch[]> {
-  const safeFiles = options.workspaceFiles.filter((file) => /\.(ts|tsx|js|jsx)$/.test(file));
-  const program = createProgram(safeFiles);
-  const sourceFile = program.getSourceFile(options.fileName);
-  if (!sourceFile) return [];
-
-  const node = findNodeAtPosition(sourceFile, options.position);
-  if (!node) return [];
-
-  const checker = program.getTypeChecker();
-  const initialSymbol = safely(() => checker.getSymbolAtLocation(node));
-  const symbol = resolveAliasedSymbol(checker, initialSymbol);
-  if (!symbol) return [];
-
-  const references = collectReferences(program, checker, symbol);
-  const matches: RouteMatch[] = [];
-
-  for (const adapter of options.adapters.filter((candidate) => safely(() => candidate.canHandle(options.workspaceFiles)) ?? false)) {
-    for (const reference of references) {
-      const resolved = await safelyAsync(() =>
-        adapter.resolveRoutes({
-          workspaceRoot: options.workspaceRoot,
-          reference,
-          workspaceFiles: options.workspaceFiles,
-        }),
-      );
-      if (resolved?.length) matches.push(...resolved);
+  for (const file of workspaceFiles) {
+    const importer = normalize(file);
+    const text = readFileText(file);
+    for (const specifier of extractImportSpecifiers(text)) {
+      const resolved = resolveImportSpecifier(importer, specifier, fileSet, workspaceRoot);
+      if (!resolved) continue;
+      const importers = reverseImports.get(resolved) ?? new Set<string>();
+      importers.add(importer);
+      reverseImports.set(resolved, importers);
     }
   }
 
-  return dedupeMatches(matches);
+  return { reverseImports };
 }
 
-function createProgram(fileNames: string[]): ts.Program {
-  return ts.createProgram(fileNames, {
-    allowJs: true,
-    checkJs: false,
-    skipLibCheck: true,
-    noResolve: false,
-    jsx: ts.JsxEmit.Preserve,
-    target: ts.ScriptTarget.ES2022,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-  });
-}
+export function expandTransitively(startFiles: string[], graph: ImportGraph): string[] {
+  const queue = [...new Set(startFiles.map(normalize))];
+  const visited = new Set<string>();
 
-function findNodeAtPosition(sourceFile: ts.SourceFile, position: number): ts.Node | undefined {
-  let found: ts.Node | undefined;
-  const visit = (node: ts.Node) => {
-    const start = safely(() => node.getStart(sourceFile)) ?? node.pos;
-    const end = node.end;
-    if (position >= start && position <= end) {
-      found = node;
-      node.forEachChild(visit);
+  while (queue.length > 0) {
+    const current = queue.shift();
+    if (!current || visited.has(current)) continue;
+    visited.add(current);
+
+    for (const importer of graph.reverseImports.get(current) ?? []) {
+      if (!visited.has(importer)) queue.push(importer);
     }
-  };
-  visit(sourceFile);
-  return found;
-}
-
-function collectReferences(program: ts.Program, checker: ts.TypeChecker, symbol: ts.Symbol): ReferencePoint[] {
-  const references: ReferencePoint[] = [];
-
-  for (const sourceFile of program.getSourceFiles()) {
-    if (sourceFile.isDeclarationFile) continue;
-    const visit = (node: ts.Node) => {
-      const nodeSymbol = resolveAliasedSymbol(checker, safely(() => checker.getSymbolAtLocation(node)));
-      if (nodeSymbol && nodeSymbol === symbol) {
-        const start = safely(() => node.getStart(sourceFile)) ?? node.pos;
-        const position = sourceFile.getLineAndCharacterOfPosition(start);
-        references.push({
-          filePath: sourceFile.fileName,
-          line: position.line + 1,
-          column: position.character + 1,
-        });
-      }
-      node.forEachChild(visit);
-    };
-    safely(() => sourceFile.forEachChild(visit));
   }
 
-  return references;
+  return [...visited];
 }
 
-function resolveAliasedSymbol(checker: ts.TypeChecker, symbol: ts.Symbol | undefined): ts.Symbol | undefined {
-  if (!symbol) return undefined;
-  return safely(() => (symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol));
+function extractImportSpecifiers(sourceText: string): string[] {
+  const results = new Set<string>();
+  const patterns = [
+    /import\s+(?:[^"']+from\s+)?["']([^"']+)["']/g,
+    /export\s+[^"']*from\s+["']([^"']+)["']/g,
+    /require\(\s*["']([^"']+)["']\s*\)/g,
+  ];
+
+  for (const pattern of patterns) {
+    for (const match of sourceText.matchAll(pattern)) {
+      results.add(match[1]);
+    }
+  }
+
+  return [...results];
 }
 
-function dedupeMatches(matches: RouteMatch[]): RouteMatch[] {
-  const seen = new Set<string>();
-  return matches.filter((match) => {
-    const key = `${match.framework}:${match.routePath}:${match.sourceFile}:${match.kind}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function resolveImportSpecifier(importerFile: string, specifier: string, fileSet: Set<string>, workspaceRoot: string): string | undefined {
+  if (specifier.startsWith(".")) {
+    return resolveFromBase(path.dirname(importerFile), specifier, fileSet);
+  }
+
+  if (specifier.startsWith("/")) {
+    return resolveFromBase(workspaceRoot, `.${specifier}`, fileSet);
+  }
+
+  if (specifier.startsWith("@/")) {
+    return resolveFromBase(workspaceRoot, `.${specifier.slice(1)}`, fileSet);
+  }
+
+  return undefined;
 }
 
-function safely<T>(fn: () => T): T | undefined {
+function resolveFromBase(baseDir: string, specifier: string, fileSet: Set<string>): string | undefined {
+  const target = normalize(path.resolve(baseDir, specifier));
+  const candidates = [
+    target,
+    `${target}.ts`,
+    `${target}.tsx`,
+    `${target}.js`,
+    `${target}.jsx`,
+    `${target}/index.ts`,
+    `${target}/index.tsx`,
+    `${target}/index.js`,
+    `${target}/index.jsx`,
+  ];
+
+  return candidates.find((candidate) => fileSet.has(candidate));
+}
+
+function readFileText(filePath: string): string {
   try {
-    return fn();
+    return fs.readFileSync(filePath, "utf8");
   } catch {
-    return undefined;
+    return "";
   }
 }
 
-async function safelyAsync<T>(fn: () => Promise<T>): Promise<T | undefined> {
-  try {
-    return await fn();
-  } catch {
-    return undefined;
-  }
+function normalize(filePath: string): string {
+  return filePath.replaceAll(path.sep, "/");
 }
