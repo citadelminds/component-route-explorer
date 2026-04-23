@@ -44,6 +44,7 @@ function extractImportSpecifiers(sourceText: string): string[] {
     /import\s+(?:[^"']+from\s+)?["']([^"']+)["']/g,
     /export\s+[^"']*from\s+["']([^"']+)["']/g,
     /require\(\s*["']([^"']+)["']\s*\)/g,
+    /import\(\s*["']([^"']+)["']\s*\)/g,
   ];
 
   for (const pattern of patterns) {
