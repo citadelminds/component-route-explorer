@@ -10,7 +10,9 @@
   "engines": {
     "vscode": "^1.95.0"
   },
-  "categories": ["Other"],
+  "categories": [
+    "Other"
+  ],
   "activationEvents": [
     "onCommand:componentRouteExplorer.showRoutesUsingComponent"
   ],
@@ -28,6 +30,11 @@
           "type": "string",
           "default": "http://localhost:3000",
           "description": "Base URL used when opening routes in the browser"
+        },
+        "componentRouteExplorer.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show debug details about resolved files and routes"
         }
       }
     }

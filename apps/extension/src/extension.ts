@@ -32,6 +32,7 @@ export function activate(context: vscode.ExtensionContext) {
         ]);
         const graph = buildImportGraph(workspaceFiles, workspaceFolder.uri.fsPath);
         const transitiveFiles = expandTransitively([...initialFiles], graph);
+        const debugEnabled = vscode.workspace.getConfiguration("componentRouteExplorer").get<boolean>("debug", false);
 
         const adapters = [createNextAppAdapter(), createReactRouterAdapter()].filter((adapter) => adapter.canHandle(workspaceFiles));
         const matches: RouteMatch[] = [];
@@ -58,6 +59,16 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const deduped = dedupeMatches(matches);
+
+        if (debugEnabled) {
+          const seedPreview = [...initialFiles].slice(0, 10).map((file) => path.relative(workspaceFolder.uri.fsPath, file)).join("\n");
+          const routePreview = deduped.map((match) => `${match.routePath} <= ${path.relative(workspaceFolder.uri.fsPath, match.sourceFile)}`).join("\n") || "<none>";
+          void vscode.window.showInformationMessage(`Seeds:
+${seedPreview}
+
+Routes:
+${routePreview}`);
+        }
         if (deduped.length === 0) {
           vscode.window.showInformationMessage("No routes found for the selected component yet.");
           return;
