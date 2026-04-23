@@ -24,7 +24,12 @@ export function activate(context: vscode.ExtensionContext) {
 
         const workspaceFiles = await collectWorkspaceFiles(workspaceFolder.uri.fsPath);
         const references = await findReferences(editor.document.uri, editor.selection.active);
-        const initialFiles = new Set<string>([editor.document.uri.fsPath, ...references.map((reference) => reference.uri.fsPath)]);
+        const documentSymbolFiles = await findDocumentSymbolContainerFiles(editor.document);
+        const initialFiles = new Set<string>([
+          editor.document.uri.fsPath,
+          ...documentSymbolFiles,
+          ...references.map((reference) => reference.uri.fsPath),
+        ]);
         const graph = buildImportGraph(workspaceFiles, workspaceFolder.uri.fsPath);
         const transitiveFiles = expandTransitively([...initialFiles], graph);
 
@@ -84,6 +89,16 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {}
+
+async function findDocumentSymbolContainerFiles(document: vscode.TextDocument): Promise<string[]> {
+  const symbols = (await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+    "vscode.executeDocumentSymbolProvider",
+    document.uri,
+  )) ?? [];
+
+  if (symbols.length === 0) return [];
+  return [document.uri.fsPath];
+}
 
 async function findReferences(uri: vscode.Uri, position: vscode.Position): Promise<vscode.Location[]> {
   const locations = (await vscode.commands.executeCommand<vscode.Location[]>(
